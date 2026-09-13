@@ -274,7 +274,19 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
 
     try {
       const accessToken = await requestAppsScriptToken();
-      const payload = { ...form, amount: Number(form.amount), ledger: period, userEmail: user.email };
+      const payload = {
+        date: form.date,
+        description: form.description.trim(),
+        category: form.category,
+        paymentMethod: form.paymentMethod,
+        paymentBank: form.paymentBank,
+        amount: Number(form.amount),
+        notes: form.notes ? form.notes.trim() : "",
+        ledger: period === "yearly" ? "yearly" : period,
+        userEmail: user.email,
+        ...(period === "yearly" && { sheet: new Date(form.date).getFullYear().toString() }),
+      };
+
       const response = await fetch(`https://script.googleapis.com/v1/scripts/${script.scriptId}:run`, {
         method: "POST",
         headers: {
@@ -294,14 +306,17 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
         );
       }
 
-      if (result.response?.result?.success === false) {
-        throw new Error(result.response.result.message || "Transaction could not be saved.");
+      const backendResult = result.response?.result;
+      if (backendResult?.success === false) {
+        throw new Error(backendResult.message || "Transaction could not be saved.");
       }
 
       const savedLabel = `${form.description.trim()} • ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(form.amount))}`;
       setSuccessModal({
         title: `${title} added successfully`,
-        detail: `${savedLabel} was saved to your ${period} ledger.`,
+        detail: backendResult?.message || backendResult?.notes
+          ? `${backendResult.message || `${savedLabel} was saved to your ${period} ledger.`} ${backendResult.notes ? `Notes: ${backendResult.notes}` : ""}`.trim()
+          : `${savedLabel} was saved to your ${period} ledger.`,
       });
       setForm({ ...initialForm(), date: form.date });
     } catch (error) {
