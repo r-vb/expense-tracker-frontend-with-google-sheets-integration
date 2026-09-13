@@ -20,7 +20,7 @@ Users must sign in with the allowed Google account before choosing a ledger and 
 
 - Node.js 20 or newer
 - A Google OAuth **Web application** client
-- Two deployed Google Apps Script web apps: one for the monthly sheet and one for the yearly sheet
+- Two private Apps Script API executables: one for the monthly sheet and one for the yearly sheet
 
 ## Setup
 
@@ -40,8 +40,11 @@ Set the values in `.env`:
 
 ```env
 VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com
-VITE_MONTHLY_SCRIPT_URL=https://script.google.com/macros/s/YOUR_MONTHLY_DEPLOYMENT_ID/exec
-VITE_YEARLY_SCRIPT_URL=https://script.google.com/macros/s/YOUR_YEARLY_DEPLOYMENT_ID/exec
+VITE_MONTHLY_SCRIPT_ID=YOUR_MONTHLY_APPS_SCRIPT_PROJECT_ID
+VITE_YEARLY_SCRIPT_ID=YOUR_YEARLY_APPS_SCRIPT_PROJECT_ID
+VITE_MONTHLY_FUNCTION_NAME=addExpense
+VITE_YEARLY_FUNCTION_NAME=addExpense
+VITE_APPS_SCRIPT_SCOPES=https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/spreadsheets
 ```
 
 Run locally:
@@ -67,16 +70,27 @@ This app uses Google Identity Services' browser popup, so it does not require an
 
 Copy the client ID—not the client secret—into `VITE_GOOGLE_CLIENT_ID`. Never commit or deploy a downloaded `client_secret_*.json` file.
 
-## Google Sheets / Apps Script setup
+## Private Google Sheets / Apps Script setup
 
-Deploy a separate Apps Script Web App for each Google Sheet and place their `/exec` URLs in the corresponding environment variables.
+Do **not** deploy a public Apps Script Web App or use a `/exec` URL. The app calls the authenticated Google Apps Script Execution API (`scripts.run`) instead.
+
+For each sheet:
+
+1. Open its Apps Script project and copy the **Script ID** from **Project Settings**.
+2. In **Deploy → New deployment**, select **API executable**.
+3. Set **Who has access** to **Only myself**, then deploy.
+4. In Apps Script **Project Settings**, change its Google Cloud project to the same standard Google Cloud project that owns `VITE_GOOGLE_CLIENT_ID`.
+5. In that Google Cloud project, enable the **Google Apps Script API**.
+6. Ensure the function named by `VITE_MONTHLY_FUNCTION_NAME` or `VITE_YEARLY_FUNCTION_NAME` accepts one plain JavaScript object and returns a plain object such as `{ success: true }`.
+
+The frontend asks Google for an OAuth access token when an expense is saved. Google then allows `scripts.run` only for the signed-in account and scopes permitted by the private API executable. Set `VITE_APPS_SCRIPT_SCOPES` to include every scope used by your scripts; the default covers the Apps Script API and spreadsheet access.
 
 | Ledger | Route | Environment variable | Destination |
 | --- | --- | --- | --- |
-| Monthly | `/monthly` | `VITE_MONTHLY_SCRIPT_URL` | Monthly Google Sheet |
-| Yearly | `/yearly` | `VITE_YEARLY_SCRIPT_URL` | Yearly Google Sheet |
+| Monthly | `/monthly` | `VITE_MONTHLY_SCRIPT_ID` | Monthly Google Sheet |
+| Yearly | `/yearly` | `VITE_YEARLY_SCRIPT_ID` | Yearly Google Sheet |
 
-For compatibility with the prior single-ledger setup, `VITE_SCRIPT_URL` is also accepted as a fallback for the monthly endpoint.
+The refactored monthly script is available at [`apps-script/monthly.gs`](apps-script/monthly.gs). Copy it into the existing monthly Apps Script project, then deploy that project as the private API executable. It preserves the original `_TEMPLATE` sheet behavior, creates sheets such as `Sep26`, and writes entries to columns B–H starting at row 22.
 
 Each request has this payload shape:
 
@@ -102,7 +116,7 @@ Each request has this payload shape:
 | `/monthly` | Monthly expense entry |
 | `/yearly` | Yearly expense entry |
 
-The browser UI only permits `rahulvb27@gmail.com`; its sign-in session lasts until the user signs out or closes the browser session. This is a user-interface restriction, not server-side protection. Because Apps Script URLs are public endpoints, enforce authorization in Apps Script as well before accepting or writing a request to a sheet.
+The browser UI only permits `rahulvb27@gmail.com`; its sign-in session lasts until the user signs out or closes the browser session. Saving asks Google for OAuth authorization, and the Apps Script API executable also restricts execution to **Only myself**. Keep the executable setting private even though the Script IDs and OAuth client ID are visible in the browser—they are identifiers, not credentials.
 
 ## Deploying
 
