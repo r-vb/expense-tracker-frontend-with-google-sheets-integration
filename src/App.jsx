@@ -243,6 +243,7 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
+  const [successModal, setSuccessModal] = useState(null);
 
   const title = `${period[0].toUpperCase() + period.slice(1)} expense`;
   const amount = useMemo(
@@ -297,7 +298,11 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
         throw new Error(result.response.result.message || "Transaction could not be saved.");
       }
 
-      setStatus({ type: "success", message: `${title} added successfully.` });
+      const savedLabel = `${form.description.trim()} • ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(form.amount))}`;
+      setSuccessModal({
+        title: `${title} added successfully`,
+        detail: `${savedLabel} was saved to your ${period} ledger.`,
+      });
       setForm({ ...initialForm(), date: form.date });
     } catch (error) {
       setStatus({ type: "error", message: error.message || "Unable to save the expense." });
@@ -394,6 +399,31 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
             {!loading && <b>→</b>}
           </button>
         </form>
+
+        {successModal && (
+          <div className="success-overlay" role="dialog" aria-modal="true" aria-live="polite">
+            <div className="success-modal">
+              <div className="success-badge">
+                <div className="success-ring" />
+                <div className="success-check">✓</div>
+              </div>
+              <p className="eyebrow success-kicker">Saved</p>
+              <h2>{successModal.title}</h2>
+              <p>{successModal.detail}</p>
+              <div className="success-actions">
+                <button type="button" className="success-primary" onClick={() => setSuccessModal(null)}>
+                  Add another
+                </button>
+                <button type="button" className="success-secondary" onClick={() => {
+                  setSuccessModal(null);
+                  onNavigate("home");
+                }}>
+                  Back to dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <aside className="insight-panel">
           <div className="insight-orb">✦</div>
