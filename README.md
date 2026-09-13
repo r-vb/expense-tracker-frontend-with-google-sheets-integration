@@ -1,21 +1,28 @@
 # Pocket Ledger
 
-A responsive personal expense tracker built with React and Vite. Add an expense from the app and save it directly to a connected Google Apps Script web app (such as one that writes to Google Sheets).
+Pocket Ledger is a React + Vite expense-entry app with two separate ledgers:
+
+- **Monthly expense** at `/monthly`, connected to the monthly Google Sheet.
+- **Yearly expense** at `/yearly`, connected to a different yearly Google Sheet.
+
+Users must sign in with the allowed Google account before choosing a ledger and entering an expense.
 
 ## Features
 
-- Mobile-first app-style expense entry interface
-- Categories, payment methods, and bank selection
-- Live amount preview while entering an expense
-- Success and error feedback for submissions
-- Responsive layout and reduced-motion support
+- Google sign-in restricted in the UI to `rahulvb27@gmail.com`
+- Monthly and yearly ledger chooser
+- Separate Google Apps Script endpoints for each ledger
+- Expense category, payment method, bank, date, amount, and notes fields
+- Live INR amount preview and submission feedback
+- Responsive, mobile-friendly interface
 
 ## Requirements
 
-- Node.js 20 or later
-- A deployed Google Apps Script web app endpoint
+- Node.js 20 or newer
+- A Google OAuth **Web application** client
+- Two deployed Google Apps Script web apps: one for the monthly sheet and one for the yearly sheet
 
-## Getting started
+## Setup
 
 Install dependencies:
 
@@ -23,43 +30,55 @@ Install dependencies:
 npm install
 ```
 
-Create a local environment file by copying the example:
+Copy the environment template:
 
-```bash
-copy .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
-Then set your deployed Apps Script URL in `.env`:
+Set the values in `.env`:
 
 ```env
-VITE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com
+VITE_MONTHLY_SCRIPT_URL=https://script.google.com/macros/s/YOUR_MONTHLY_DEPLOYMENT_ID/exec
+VITE_YEARLY_SCRIPT_URL=https://script.google.com/macros/s/YOUR_YEARLY_DEPLOYMENT_ID/exec
 ```
 
-Start the development server:
+Run locally:
 
 ```bash
 npm run dev
 ```
 
-## Scripts
+## Google OAuth configuration
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Starts the Vite development server. |
-| `npm run build` | Creates an optimized production build in `dist`. |
-| `npm run preview` | Serves the production build locally. |
+In Google Cloud Console, create an OAuth 2.0 Client ID of type **Web application**.
 
-## Environment variables
+Under **Authorized JavaScript origins**, add:
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `VITE_SCRIPT_URL` | Yes | Google Apps Script web app URL that receives submitted expenses. |
+```text
+https://expense.rahul.asia
+http://localhost:5173
+```
 
-Vite only exposes variables prefixed with `VITE_` to the browser. Do not put private secrets in this file, since the value is included in the client-side app at build time.
+The local origin is only needed during local development. Do not add `/monthly` or `/yearly`; origins must not contain paths.
 
-## Submission payload
+This app uses Google Identity Services' browser popup, so it does not require an **Authorized redirect URI**. Leave redirect URIs blank unless you later implement a server-side OAuth redirect flow.
 
-The app sends a JSON `POST` request containing:
+Copy the client ID—not the client secret—into `VITE_GOOGLE_CLIENT_ID`. Never commit or deploy a downloaded `client_secret_*.json` file.
+
+## Google Sheets / Apps Script setup
+
+Deploy a separate Apps Script Web App for each Google Sheet and place their `/exec` URLs in the corresponding environment variables.
+
+| Ledger | Route | Environment variable | Destination |
+| --- | --- | --- | --- |
+| Monthly | `/monthly` | `VITE_MONTHLY_SCRIPT_URL` | Monthly Google Sheet |
+| Yearly | `/yearly` | `VITE_YEARLY_SCRIPT_URL` | Yearly Google Sheet |
+
+For compatibility with the prior single-ledger setup, `VITE_SCRIPT_URL` is also accepted as a fallback for the monthly endpoint.
+
+Each request has this payload shape:
 
 ```json
 {
@@ -69,6 +88,38 @@ The app sends a JSON `POST` request containing:
   "paymentMethod": "UPI - Bank",
   "paymentBank": "HDFC Bank",
   "amount": 500,
-  "notes": "Optional notes"
+  "notes": "Optional notes",
+  "ledger": "monthly",
+  "userEmail": "rahulvb27@gmail.com"
 }
 ```
+
+## Routes and access
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Login and ledger selection |
+| `/monthly` | Monthly expense entry |
+| `/yearly` | Yearly expense entry |
+
+The browser UI only permits `rahulvb27@gmail.com`; its sign-in session lasts until the user signs out or closes the browser session. This is a user-interface restriction, not server-side protection. Because Apps Script URLs are public endpoints, enforce authorization in Apps Script as well before accepting or writing a request to a sheet.
+
+## Deploying
+
+Build the app:
+
+```bash
+npm run build
+```
+
+Deploy the contents of `dist/` to the host for `expense.rahul.asia`. Configure the host to serve `index.html` as the fallback for `/monthly` and `/yearly`; otherwise refreshing either route can return a 404.
+
+Set the three `VITE_` variables in your deployment environment before building. Vite includes `VITE_` values in the client bundle, so never put secrets in them.
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the local development server. |
+| `npm run build` | Create the production bundle in `dist/`. |
+| `npm run preview` | Preview the production bundle locally. |
