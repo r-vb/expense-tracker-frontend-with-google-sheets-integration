@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwB7o7xpmcq1rb8YMY0nitLs3VGd_4kyhQbBRUb3sH5-J-83MjWOS0ONKgXF30jBcn6/exec"
+const SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL;
 const initialForm = {
   date: new Date().toISOString().split("T")[0],
   description: "",
@@ -71,7 +70,7 @@ function App() {
       return;
     }
 
-    if (SCRIPT_URL === "YOUR_DEPLOYED_WEB_APP_URL") {
+    if (!SCRIPT_URL || SCRIPT_URL === "YOUR_DEPLOYED_WEB_APP_URL") {
       setStatus({
         type: "error",
         message:
