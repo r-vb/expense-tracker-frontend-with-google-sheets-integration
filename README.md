@@ -74,7 +74,9 @@ Copy the client ID—not the client secret—into `VITE_GOOGLE_CLIENT_ID`. Never
 
 Do **not** deploy a public Apps Script Web App or use a `/exec` URL. The app calls the authenticated Google Apps Script Execution API (`scripts.run`) instead.
 
-For each sheet:
+For each sheet, create a **standalone** Apps Script project at `script.google.com`—do not use a project created from inside a Google Sheet. Container-bound scripts lose container-related methods when invoked through the Apps Script API. The standalone script explicitly opens its spreadsheet by ID instead.
+
+For each standalone script:
 
 1. Open its Apps Script project and copy the **Script ID** from **Project Settings**.
 2. In **Deploy → New deployment**, select **API executable**.
@@ -90,7 +92,7 @@ The frontend asks Google for an OAuth access token when an expense is saved. Goo
 | Monthly | `/monthly` | `VITE_MONTHLY_SCRIPT_ID` | Monthly Google Sheet |
 | Yearly | `/yearly` | `VITE_YEARLY_SCRIPT_ID` | Yearly Google Sheet |
 
-The refactored monthly script is available at [`apps-script/monthly.gs`](apps-script/monthly.gs). Copy it into the existing monthly Apps Script project, then deploy that project as the private API executable. It preserves the original `_TEMPLATE` sheet behavior, creates sheets such as `Sep26`, and writes entries to columns B–H starting at row 22.
+The refactored monthly script is available at [`apps-script/monthly.gs`](apps-script/monthly.gs). Copy it into the existing monthly Apps Script project, then set `CONFIG.SPREADSHEET_ID` to the monthly spreadsheet ID (the text between `/d/` and `/edit` in its URL). This is required because API-executable calls have no active spreadsheet UI context. It preserves the original `_TEMPLATE` sheet behavior, creates sheets such as `Sep26`, and writes entries to columns B–H starting at row 22.
 
 Each request has this payload shape:
 
