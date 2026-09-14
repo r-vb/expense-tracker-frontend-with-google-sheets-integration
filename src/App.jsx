@@ -221,7 +221,7 @@ function Dashboard({ user, onNavigate, onSignOut }) {
 
         <div className="period-cards">
           <button className="period-card primary" onClick={() => onNavigate("monthly")}>
-            <span>01</span>
+            <span>1/2</span>
             <strong>Monthly expense</strong>
             <small>Track everyday spending and keep your monthly record tidy.</small>
             <b>Open monthly →</b>
