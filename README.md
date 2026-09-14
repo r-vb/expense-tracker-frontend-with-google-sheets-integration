@@ -79,6 +79,17 @@ Important:
 - Do not commit downloaded `client_secret_*.json` files
 - Do not include secret values in frontend env variables
 
+## Security model
+
+This project does not use a database. The real trust boundary is the private Google Apps Script executable plus the Google Sheet it writes to.
+
+- The browser-side check is only a user experience guard: it blocks the wrong Google account before the request is made.
+- The Apps Script function is the actual authorization gate. It rejects any request whose `userEmail` does not exactly match the allowed account.
+- The Apps Script project itself should remain private and should not be published as a public Web App.
+- Each script validates the incoming payload, checks the ledger type, checks the amount, and writes only sanitized values into Sheets.
+
+This keeps the app simple and effective without a separate backend, while still preventing unauthorized entries from being written to the Sheet.
+
 ## Apps Script and Sheets setup
 
 This frontend does not use a public Web App endpoint. It calls the authenticated Google Apps Script Execution API via `scripts.run`.

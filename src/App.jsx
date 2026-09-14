@@ -8,6 +8,10 @@ const SCRIPT_CONFIG = {
 };
 const APPS_SCRIPT_SCOPES = import.meta.env.VITE_APPS_SCRIPT_SCOPES || "https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/spreadsheets";
 
+function normalizeUserEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 const initialForm = () => ({
   date: new Date().toISOString().split("T")[0],
   description: "",
@@ -112,10 +116,11 @@ function SignIn({ onSignedIn }) {
         callback: ({ credential }) => {
           try {
             const profile = JSON.parse(atob(credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-            if (profile.email !== ALLOWED_EMAIL || !profile.email_verified) {
+            const email = normalizeUserEmail(profile.email);
+            if (email !== normalizeUserEmail(ALLOWED_EMAIL) || !profile.email_verified) {
               throw new Error();
             }
-            const user = { email: profile.email, name: profile.name || "Rahul" };
+            const user = { email, name: profile.name || "Rahul" };
             sessionStorage.setItem("expense-user", JSON.stringify(user));
             onSignedIn(user);
           } catch {
@@ -283,7 +288,7 @@ function ExpenseForm({ period, user, onNavigate, onSignOut }) {
         amount: Number(form.amount),
         notes: form.notes ? form.notes.trim() : "",
         ledger: period === "yearly" ? "yearly" : period,
-        userEmail: user.email,
+        userEmail: normalizeUserEmail(user.email),
         ...(period === "yearly" && { sheet: new Date(form.date).getFullYear().toString() }),
       };
 
